@@ -9,3 +9,6 @@
 
 # RStudio files
 .Rproj.user/
+
+# csv data files
+.csv
