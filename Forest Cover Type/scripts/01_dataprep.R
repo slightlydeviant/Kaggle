@@ -63,9 +63,29 @@ hist(forest_data$Vertical_Distance_To_Hydrology)
 summary(forest_data$Vertical_Distance_To_Hydrology)
 # relation to elevation? horizontal dist?
 # Could we create a triangulated dist to hydrology?
-
 ggplot(data = forest_data, aes(x = Vertical_Distance_To_Hydrology, color = Cover_Type)) +  #, fill = Cover_Type)) +
   geom_density(alpha = .5)
+
+# Dist to hydrology = sqrt(h^2 + v^2)
+forest_data$Distance_To_Hydrology <- sqrt(forest_data$Vertical_Distance_To_Hydrology^2 + forest_data$Horizontal_Distance_To_Hydrology^2)
+
+hist(forest_data$Distance_To_Hydrology)
+summary(forest_data$Distance_To_Hydrology)
+
+ggplot(data = forest_data, aes(x = Distance_To_Hydrology, color = Cover_Type)) +  #, fill = Cover_Type)) +
+  geom_density(alpha = .5)
+
+# log transform?
+hist(log(forest_data$Distance_To_Hydrology + 1))
+summary(log(forest_data$Distance_To_Hydrology + 1))
+
+# Distance is zero or not
+at_hydrology <- numeric(nrows(forest_data))
+at_hydrology <- ifelse(forest_data$Distance_To_Hydrology == 0, 0, 1)
+table(at_hydrology, forest_data$Cover_Type)
+chisq.test(at_hydrology, forest_data$Cover_Type)  # significant difference between Cover_Types
+forest_data$At_Hydrology <- at_hydrology
+
 
 # Horizontal dist to Roadways
 hist(forest_data$Horizontal_Distance_To_Roadways)  # skew right
@@ -97,6 +117,48 @@ summary(forest_data$Hillshade_3pm)
 ggplot(data = forest_data, aes(x = Hillshade_3pm, color = Cover_Type)) +  #, fill = Cover_Type)) +
   geom_density(alpha = .5)
 # hillshade is not very discriminating. Is there a way to combine these three metrics?
+
+cor(select(forest_data, starts_with("Hill")))
+
+ggplot(forest_data, aes(x = Hillshade_9am, y = Hillshade_Noon, color = Cover_Type)) + 
+  geom_point() +
+  scale_x_continuous(limits = c(0, 255)) +
+  scale_y_continuous(limits = c(0, 255))
+
+ggplot(forest_data, aes(x = Hillshade_9am, y = Hillshade_3pm, color = Cover_Type)) + 
+  geom_point() +
+  scale_x_continuous(limits = c(0, 255)) +
+  scale_y_continuous(limits = c(0, 255))
+
+ggplot(forest_data, aes(x = Hillshade_Noon, y = Hillshade_3pm, color = Cover_Type)) + 
+  geom_point() +
+  scale_x_continuous(limits = c(0, 255)) +
+  scale_y_continuous(limits = c(0, 255))
+
+# some zeros for Hillshade_3pm that don't seem to fit the pattern. Impute or drop or leave be?
+# impute
+hillreg <- select(forest_data, Id, starts_with("Hill"))
+to_impute <- which(hillreg$Hillshade_3pm == 0)
+hillreg_train <- hillreg[-to_impute, ]
+hillreg_imp <- hillreg[to_impute, ]
+
+hillmodel <- lm(Hillshade_3pm ~ Hillshade_9am + Hillshade_Noon, data = hillreg)  # lm probably not best option. How to improve? 
+# lm seems to underestimate when looking at wilderness*soil clusters. Maybe wilderness*soil cluster mean imputation?
+summary(hillmodel)  # very good model (though there is some functional relationship in residuals)
+
+hillshade3_imp <- predict(hillmodel, hillreg_imp)
+hillshade3_imp <- ifelse(hillshade3_imp < 0, 0, hillshade3_imp)
+imputedhillshade3pm <- rbind(cbind("Hillshade_3pm" = hillshade3_imp, "Id" = as.numeric(to_impute)), 
+                             cbind(hillreg_train$Hillshade_3pm, as.numeric(hillreg_train$Id))) %>%
+  as.data.frame() %>%
+  arrange(Id) %>%
+  select(Hillshade_3pm)
+
+forest_data$IMP_Hillshade_3pm <- imputedhillshade3pm[, 1]
+cor(select(forest_data, starts_with("Hill"), IMP_Hillshade_3pm))  # not much difference - did not change relationships (a good thing)
+
+# shade movement
+ggplot(forest_data, aes())
 
 # Horizontal dist to fire points
 hist(forest_data$Horizontal_Distance_To_Fire_Points)  # Skew right

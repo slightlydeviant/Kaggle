@@ -14,6 +14,7 @@ forest_data[, 56] <- factor(forest_data[, 56], levels = seq(1, 7),
                             labels = c("Spruce/Fir", "Lodgepole Pine", "Ponderosa Pine",
                                        "Cottonwood/Willow", "Aspen", "Douglas-fir", "Krummholz"))
 forest_data$AspectCentered <- ifelse(forest_data$Aspect > 240, forest_data$Aspect - 360, forest_data$Aspect) - (240 - 360)
+forest_data$Distance_To_Hydrology <- sqrt(forest_data$Vertical_Distance_To_Hydrology^2 + forest_data$Horizontal_Distance_To_Hydrology^2)
 
 forest_data <- select(forest_data, -Aspect)
 
