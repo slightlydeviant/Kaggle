@@ -192,4 +192,14 @@ table(collapsed_forest_data$Wilderness_Area, collapsed_forest_data$Cover_Type)  
 # Soil Type
 table(collapsed_forest_data$Soil_Type, collapsed_forest_data$Cover_Type)  # looks like a good discriminator
 
+# condense types using tree
+library(rpart)
+library(rpart.plot)
 
+set.seed(12)
+smalldata <- forest_data[sample(1:nrow(forest_data), 8000), ] %>%
+  select(Cover_Type, contains("Soil"))
+soil_tree <- rpart(Cover_Type ~ ., data = smalldata, cp = .005, parms = list(split="information"), maxdepth = 20)
+prp(soil_tree, type = 0, extra = 4, under = TRUE, varlen = 0)
+
+forest_data$Soil_Type35383940 <- with(forest_data, ifelse(Soil_Type35 == 1 | Soil_Type38 == 1 | Soil_Type39 == 1 | Soil_Type40 == 1, 1, 0))
